@@ -24,14 +24,14 @@ txsetup_sock(int sock)
 	memset(&msg, 0, sizeof(msg));
 
 	sa.can_family = AF_CAN;
-	sa.can_ifindex = 0;
+	sa.can_ifindex = 6;
 	sa.can_addr.tp.rx_id = 0;
 	sa.can_addr.tp.tx_id = 0;
 
-        msg.b.opcode = TX_SEND;
-        msg.b.flags = CAN_FD_FRAME | SETTIMER | STARTTIMER;
-        msg.b.count = 0;
-        msg.b.ival1.tv_sec = msg.b.ival2.tv_sec = 0;
+        msg.b.opcode = TX_SETUP;
+        msg.b.flags = CAN_FD_FRAME | SETTIMER | STARTTIMER | TX_COUNTEVT;
+        msg.b.count = 1;
+        msg.b.ival1.tv_sec = msg.b.ival2.tv_sec = 1;
         msg.b.ival1.tv_usec = msg.b.ival2.tv_usec = 1;
         msg.b.can_id = 0;
         msg.b.nframes = 1;
@@ -77,7 +77,7 @@ main(void)
 	}
 
 	sa.can_family = AF_CAN;
-	sa.can_ifindex = 0;
+	sa.can_ifindex = 6;
 	sa.can_addr.tp.rx_id = 0;
 	sa.can_addr.tp.tx_id = 0;
 
@@ -87,7 +87,7 @@ main(void)
 
 	memset(&sa, 0, sizeof(sa));
 	sa.can_family = AF_CAN;
-	sa.can_ifindex = 0;
+	sa.can_ifindex = 6;
 	socklen_t len = 0;
 
 	memset(&msg, 0, sizeof(msg));
