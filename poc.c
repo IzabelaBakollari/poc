@@ -139,9 +139,6 @@ main(void)
 	s = recvfrom(sock, &msg, sizeof(msg), 0,
 			(struct sockaddr *)&sa, &len);
 	
-	char n = ((unsigned char*) &msg)[i];
-
-	
 	printf("size of rx recvfrom = %d\n", s);
 	
 	if (s < 0) {
@@ -154,6 +151,7 @@ main(void)
 	// memcpy(buf, &msg, sizeof(buf));
 
 	for (i = 11; i < 16; i++){
+		char n = ((unsigned char*) &msg)[i];
 		if (n !=0 ){
 			perror("tx padding recvfrom");
 			printf("%x\n ", n);
@@ -162,7 +160,7 @@ main(void)
 	}
 
 	for (i = 0; i < sizeof(msg); i++)
- 		printf("%x ", n);
+ 		printf("%x ", ((unsigned char*) &msg)[i]);
  	printf("\n");
 
 
@@ -178,7 +176,8 @@ main(void)
     
 	// memcpy(buf, &msg, sizeof(buf));
 
-	for (i = 11; i < 16; i++){
+	for (i = 12; i < 16; i++){
+		char n = ((unsigned char*) &msg)[i];
 		if (n !=0 ){
 			perror("tx padding recvfrom");
 			printf("%x\n ", n);
@@ -186,7 +185,7 @@ main(void)
 		}
 	}
 	for (i = 0; i < sizeof(msg); i++)
- 		printf("%x ", n);
+ 		printf("%x ", ((unsigned char*) &msg)[i]);
  	printf("\n");
 
 	return 0;
