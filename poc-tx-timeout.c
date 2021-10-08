@@ -30,7 +30,7 @@ txsetup_sock(int sock)
 
         msg.b.opcode = TX_SETUP;
         msg.b.flags = CAN_FD_FRAME | SETTIMER | STARTTIMER | TX_COUNTEVT;
-        msg.b.count = 1;
+        msg.b.count = 2;
         msg.b.ival1.tv_sec = msg.b.ival2.tv_sec = 1;
         msg.b.ival1.tv_usec = msg.b.ival2.tv_usec = 1;
         msg.b.can_id = 0;

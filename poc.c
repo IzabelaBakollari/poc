@@ -19,7 +19,6 @@ rxsetup_sock(int sock)
 		struct bcm_msg_head b;
 		struct canfd_frame f;
 	} msg;
-	// char buf[sizeof(msg)];
 
 	memset(&msg, 0, sizeof(msg));
 
@@ -35,8 +34,6 @@ rxsetup_sock(int sock)
         msg.b.ival1.tv_usec = msg.b.ival2.tv_usec = 1;
         msg.b.can_id = 0;
         msg.b.nframes = 1;
-
-	// memcpy(buf, &msg, sizeof(buf));
  
 	for (i = 0; i < sizeof(msg); i++)
     		printf("%x ", ((unsigned char*) &msg)[i]);
@@ -45,13 +42,10 @@ rxsetup_sock(int sock)
 	s = sendto(sock, &msg, sizeof(msg), 0, (struct sockaddr *)&sa,
 			sizeof(sa));
 	
-	printf("size of rx sendto = %d\n", s);
-
 	if (s < 0) {
-
-        perror("sendto");
+		perror("sendto");
 		printf("Errno = %d\n", errno);
-        exit (EXIT_FAILURE);
+        	exit (EXIT_FAILURE);
 	}
 }
 void
@@ -63,7 +57,6 @@ txsetup_sock(int sock)
 		struct bcm_msg_head b;
 		struct canfd_frame f;
 	} msg;
-	// char buf[sizeof(msg)];
 
 	memset(&msg, 0, sizeof(msg));
 
@@ -80,7 +73,6 @@ txsetup_sock(int sock)
         msg.b.can_id = 0;
         msg.b.nframes = 1;
 
-	// memcpy(buf, &msg, sizeof(buf));
  
 	for (i = 0; i < sizeof(msg); i++)
     		printf("%x ", ((unsigned char*) &msg)[i]);
@@ -88,15 +80,40 @@ txsetup_sock(int sock)
 
 	s = sendto(sock, &msg, sizeof(msg), 0, (struct sockaddr *)&sa,
 			sizeof(sa));
-	
-	printf("size of tx sendto = %d\n", s);
 
 	if (s < 0) {
-
-        perror("sendto");
+        	perror("sendto");
 		printf("Errno = %d\n", errno);
-        exit (EXIT_FAILURE);
+        	exit (EXIT_FAILURE);
 	}
+}
+int
+setup_sock(int s)
+{
+	int i;
+	struct {
+		struct bcm_msg_head b;
+		struct canfd_frame f;
+	} msg;
+
+	if (s < 0 && s < sizeof(msg.b)) {
+       		perror("Message recevied is null");
+		printf("Errno = %d\n", errno);
+		exit(EXIT_FAILURE);
+	}
+    
+	for (i = 12; i < 16; i++) {
+		char n = ((unsigned char*) &msg)[i];
+		if (n !=0) {
+			perror("Padding bytes are corrupted");
+			printf("%x\n ", n);
+			exit(EXIT_FAILURE);
+		}
+	}
+
+	for (i = 0; i < sizeof(msg); i++)
+ 		printf("%x ", ((unsigned char*) &msg)[i]);
+ 	printf("\n");
 }
 
 int
@@ -139,54 +156,14 @@ main(void)
 	s = recvfrom(sock, &msg, sizeof(msg), 0,
 			(struct sockaddr *)&sa, &len);
 	
-	printf("size of rx recvfrom = %d\n", s);
-	
-	if (s < 0) {
-       		perror("rx recvfrom");
-		printf("Errno = %d\n", errno);
-
-        return 0;
-	}
-    
-	// memcpy(buf, &msg, sizeof(buf));
-
-	for (i = 11; i < 16; i++){
-		char n = ((unsigned char*) &msg)[i];
-		if (n !=0 ){
-			perror("tx padding recvfrom");
-			printf("%x\n ", n);
-			return 0;
-		}
-	}
-
-	for (i = 0; i < sizeof(msg); i++)
- 		printf("%x ", ((unsigned char*) &msg)[i]);
- 	printf("\n");
-
+	setup_sock(s);
 
 	txsetup_sock(sock);
-	
-	printf("size of tx recvfrom = %d\n", s);
-	
-	if (s < 0) {
-       		perror("tx recvfrom");
-		printf("Errno = %d\n", errno);
-	        return 0;
-	}
-    
-	// memcpy(buf, &msg, sizeof(buf));
 
-	for (i = 12; i < 16; i++){
-		char n = ((unsigned char*) &msg)[i];
-		if (n !=0 ){
-			perror("tx padding recvfrom");
-			printf("%x\n ", n);
-			return 0;
-		}
-	}
-	for (i = 0; i < sizeof(msg); i++)
- 		printf("%x ", ((unsigned char*) &msg)[i]);
- 	printf("\n");
+	s = recvfrom(sock, &msg, sizeof(msg), 0,
+			(struct sockaddr *)&sa, &len);
+
+	setup_sock(s);
 
 	return 0;
 }
