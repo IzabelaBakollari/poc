@@ -13,19 +13,12 @@
 void
 rxsetup_sock(int sock)
 {
-	int i,s;
-	struct sockaddr_can sa;
 	struct {
 		struct bcm_msg_head b;
 		struct canfd_frame f;
 	} msg;
 
 	memset(&msg, 0, sizeof(msg));
-
-	sa.can_family = AF_CAN;
-	sa.can_ifindex = 6;
-	sa.can_addr.tp.rx_id = 0;
-	sa.can_addr.tp.tx_id = 0;
 
         msg.b.opcode = RX_SETUP;
         msg.b.flags = CAN_FD_FRAME | SETTIMER | STARTTIMER;
@@ -34,22 +27,29 @@ rxsetup_sock(int sock)
         msg.b.ival1.tv_usec = msg.b.ival2.tv_usec = 1;
         msg.b.can_id = 0;
         msg.b.nframes = 1;
- 
-	for (i = 0; i < sizeof(msg); i++)
-    		printf("%x ", ((unsigned char*) &msg)[i]);
-   	printf("\n");
-
-	s = sendto(sock, &msg, sizeof(msg), 0, (struct sockaddr *)&sa,
-			sizeof(sa));
-	
-	if (s < 0) {
-		perror("sendto");
-		printf("Errno = %d\n", errno);
-        	exit (EXIT_FAILURE);
-	}
 }
+
 void
 txsetup_sock(int sock)
+{
+	struct {
+		struct bcm_msg_head b;
+		struct canfd_frame f;
+	} msg;
+
+	memset(&msg, 0, sizeof(msg));
+
+	msg.b.opcode = TX_SETUP;
+        msg.b.flags = CAN_FD_FRAME | SETTIMER | STARTTIMER | TX_COUNTEVT;
+        msg.b.count = 2;
+        msg.b.ival1.tv_sec = msg.b.ival2.tv_sec = 1;
+        msg.b.ival1.tv_usec = msg.b.ival2.tv_usec = 1;
+        msg.b.can_id = 0;
+        msg.b.nframes = 1;
+}
+
+void
+receive_and_check(int sock)
 {
 	int i,s;
 	struct sockaddr_can sa;
@@ -58,25 +58,10 @@ txsetup_sock(int sock)
 		struct canfd_frame f;
 	} msg;
 
-	memset(&msg, 0, sizeof(msg));
-
 	sa.can_family = AF_CAN;
 	sa.can_ifindex = 6;
 	sa.can_addr.tp.rx_id = 0;
 	sa.can_addr.tp.tx_id = 0;
-
-        msg.b.opcode = TX_SETUP;
-        msg.b.flags = CAN_FD_FRAME | SETTIMER | STARTTIMER | TX_COUNTEVT;
-        msg.b.count = 2;
-        msg.b.ival1.tv_sec = msg.b.ival2.tv_sec = 1;
-        msg.b.ival1.tv_usec = msg.b.ival2.tv_usec = 1;
-        msg.b.can_id = 0;
-        msg.b.nframes = 1;
-
- 
-	for (i = 0; i < sizeof(msg); i++)
-    		printf("%x ", ((unsigned char*) &msg)[i]);
-   	printf("\n");
 
 	s = sendto(sock, &msg, sizeof(msg), 0, (struct sockaddr *)&sa,
 			sizeof(sa));
@@ -86,17 +71,17 @@ txsetup_sock(int sock)
 		printf("Errno = %d\n", errno);
         	exit (EXIT_FAILURE);
 	}
-}
-int
-setup_sock(int s)
-{
-	int i;
-	struct {
-		struct bcm_msg_head b;
-		struct canfd_frame f;
-	} msg;
 
-	if (s < 0 && s < sizeof(msg.b)) {
+	for (i = 0; i < sizeof(msg); i++)
+    		printf("%x ", ((unsigned char*) &msg)[i]);
+   	printf("\n");
+
+	socklen_t len = 0;
+
+	s = recvfrom(sock, &msg, sizeof(msg), 0,
+			(struct sockaddr *)&sa, &len);
+
+	if (s < sizeof(msg.b)) {
        		perror("Message recevied is null");
 		printf("Errno = %d\n", errno);
 		exit(EXIT_FAILURE);
@@ -119,14 +104,12 @@ setup_sock(int s)
 int
 main(void)
 {
-	int i,s;
 	int sock;
 	struct sockaddr_can sa;
 	struct {
 		struct bcm_msg_head b;
 		struct canfd_frame f;
 	} msg;
-	//char buf[sizeof(msg)];
 
 	sock = socket(AF_CAN, SOCK_DGRAM, CAN_BCM);
 
@@ -138,7 +121,7 @@ main(void)
 	}
 
 	sa.can_family = AF_CAN;
-	sa.can_ifindex = 0;
+	sa.can_ifindex = 6;
 	sa.can_addr.tp.rx_id = 0;
 	sa.can_addr.tp.tx_id = 0;
 
@@ -149,22 +132,14 @@ main(void)
 	memset(&sa, 0, sizeof(sa));
 	sa.can_family = AF_CAN;
 	sa.can_ifindex = 6;
-	socklen_t len = 0;
 
 	memset(&msg, 0, sizeof(msg));
-
-	s = recvfrom(sock, &msg, sizeof(msg), 0,
-			(struct sockaddr *)&sa, &len);
 	
-	setup_sock(s);
+	receive_and_check(sock);
 
 	txsetup_sock(sock);
 
-	s = recvfrom(sock, &msg, sizeof(msg), 0,
-			(struct sockaddr *)&sa, &len);
-
-	setup_sock(s);
+	receive_and_check(sock);
 
 	return 0;
 }
-
