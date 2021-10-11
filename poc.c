@@ -10,7 +10,7 @@
 #include <linux/can.h>
 #include <linux/can/bcm.h>
 
-struct message{
+struct message {
 	struct bcm_msg_head b;
 	struct canfd_frame f;
 };
@@ -18,7 +18,7 @@ struct message{
 void
 rxsetup_sock(struct message *msg)
 {
-	memset(&msg, 0, sizeof(msg));
+	memset(msg, 0, sizeof(*msg));
 
         msg->b.opcode = RX_SETUP;
         msg->b.flags = CAN_FD_FRAME | SETTIMER | STARTTIMER;
@@ -32,7 +32,7 @@ rxsetup_sock(struct message *msg)
 void
 txsetup_sock(struct message *msg)
 {
-	memset(&msg, 0, sizeof(msg));
+	memset(msg, 0, sizeof(*msg));
 
 	msg->b.opcode = TX_SETUP;
         msg->b.flags = CAN_FD_FRAME | SETTIMER | STARTTIMER | TX_COUNTEVT;
@@ -44,24 +44,9 @@ txsetup_sock(struct message *msg)
 }
 
 void
-receive_and_check(struct message *msg)
+receive_and_check(struct message *msg, int sock, struct sockaddr_can sa)
 {
 	int i,s;
-	int sock;
-	struct sockaddr_can sa;
-
-	sock = socket(AF_CAN, SOCK_DGRAM, CAN_BCM);
-
-	if (sock < 0) {
-		perror("sock");
-		printf("Errno = %d\n", errno);
-		exit(EXIT_FAILURE);
-	}
-
-	sa.can_family = AF_CAN;
-	sa.can_ifindex = 6;
-	sa.can_addr.tp.rx_id = 0;
-	sa.can_addr.tp.tx_id = 0;
 
 	s = sendto(sock, &msg, sizeof(msg), 0, (struct sockaddr *)&sa,
 			sizeof(sa));
@@ -116,6 +101,7 @@ main(void)
 		exit(EXIT_FAILURE);
 	}
 
+	memset(&sa, 0, sizeof(sa));
 	sa.can_family = AF_CAN;
 	sa.can_ifindex = 6;
 	sa.can_addr.tp.rx_id = 0;
@@ -124,18 +110,12 @@ main(void)
 	connect(sock, (struct sockaddr *)&sa, sizeof(sa));
 
 	rxsetup_sock(&msg);
-
-	memset(&sa, 0, sizeof(sa));
-	sa.can_family = AF_CAN;
-	sa.can_ifindex = 6;
-
-	memset(&msg, 0, sizeof(msg));
 	
-	receive_and_check(&msg);
+	receive_and_check(&msg, sock, sa);
 
 	txsetup_sock(&msg);
 
-	receive_and_check(&msg);
+	receive_and_check(&msg, sock, sa);
 
 	return 0;
 }
