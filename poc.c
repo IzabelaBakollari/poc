@@ -106,10 +106,7 @@ main(void)
 {
 	int sock;
 	struct sockaddr_can sa;
-	struct {
-		struct bcm_msg_head b;
-		struct canfd_frame f;
-	} msg;
+	struct message msg;
 
 	sock = socket(AF_CAN, SOCK_DGRAM, CAN_BCM);
 
