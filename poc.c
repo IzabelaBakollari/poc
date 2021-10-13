@@ -44,7 +44,7 @@ txsetup_sock(struct message *msg)
 }
 
 void
-receive_and_check(struct message *msg, int sock, struct sockaddr_can sa)
+receive_and_check(struct message *msg, int sock, struct sockaddr_can *sa)
 {
 	int i,s;
 
@@ -74,7 +74,7 @@ receive_and_check(struct message *msg, int sock, struct sockaddr_can sa)
     
 	for (i = 12; i < 16; i++) {
 		char n = ((unsigned char*) &msg)[i];
-		if (n !=0) {
+		if (n != 0) {
 			perror("Padding bytes are corrupted");
 			printf("%x\n ", n);
 			exit(EXIT_FAILURE);
@@ -103,7 +103,7 @@ main(void)
 
 	memset(&sa, 0, sizeof(sa));
 	sa.can_family = AF_CAN;
-	sa.can_ifindex = 6;
+	sa.can_ifindex = 7;
 	sa.can_addr.tp.rx_id = 0;
 	sa.can_addr.tp.tx_id = 0;
 
@@ -111,11 +111,11 @@ main(void)
 
 	rxsetup_sock(&msg);
 	
-	receive_and_check(&msg, sock, sa);
+	receive_and_check(&msg, sock, &sa);
 
 	txsetup_sock(&msg);
 
-	receive_and_check(&msg, sock, sa);
+	receive_and_check(&msg, sock, &sa);
 
 	return 0;
 }
