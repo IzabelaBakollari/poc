@@ -48,8 +48,8 @@ receive_and_check(struct message *msg, int sock, struct sockaddr_can *sa)
 {
 	int i,s;
 
-	s = sendto(sock, &msg, sizeof(msg), 0, (struct sockaddr *)&sa,
-			sizeof(sa));
+	s = sendto(sock, msg, sizeof(*msg), 0, (struct sockaddr *)sa,
+			sizeof(*sa));
 
 	if (s < 0) {
         	perror("sendto");
@@ -57,23 +57,23 @@ receive_and_check(struct message *msg, int sock, struct sockaddr_can *sa)
         	exit (EXIT_FAILURE);
 	}
 
-	for (i = 0; i < sizeof(msg); i++)
-    		printf("%x ", ((unsigned char*) &msg)[i]);
+	for (i = 0; i < sizeof(*msg); i++)
+    		printf("%x ", ((unsigned char*) msg)[i]);
    	printf("\n");
 
 	socklen_t len = 0;
 
-	s = recvfrom(sock, &msg, sizeof(msg), 0,
-			(struct sockaddr *)&sa, &len);
+	s = recvfrom(sock, msg, sizeof(*msg), 0,
+			(struct sockaddr *)sa, &len);
 
 	if (s < sizeof(msg->b)) {
-       		perror("Message recevied is null");
+       		perror("Message recieved is null");
 		printf("Errno = %d\n", errno);
 		exit(EXIT_FAILURE);
 	}
     
 	for (i = 12; i < 16; i++) {
-		char n = ((unsigned char*) &msg)[i];
+		char n = ((unsigned char*) msg)[i];
 		if (n != 0) {
 			perror("Padding bytes are corrupted");
 			printf("%x\n ", n);
@@ -81,8 +81,8 @@ receive_and_check(struct message *msg, int sock, struct sockaddr_can *sa)
 		}
 	}
 
-	for (i = 0; i < sizeof(msg); i++)
- 		printf("%x ", ((unsigned char*) &msg)[i]);
+	for (i = 0; i < sizeof(*msg); i++)
+ 		printf("%x ", ((unsigned char*) msg)[i]);
  	printf("\n");
 }
 
