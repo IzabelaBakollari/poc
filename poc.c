@@ -9,6 +9,8 @@
 #include <sys/socket.h>
 #include <linux/can.h>
 #include <linux/can/bcm.h>
+#include <sys/ioctl.h>
+#include <net/if.h>
 
 struct message {
 	struct bcm_msg_head b;
@@ -44,6 +46,16 @@ txsetup_sock(struct message *msg)
 }
 
 void
+print_message(struct message *msg, int s)
+{	
+	int i;
+
+	for (i=0; i<s; i++)
+    		printf("%x ", ((unsigned char*) msg)[i]);
+   	printf("\n");
+}
+
+void
 receive_and_check(struct message *msg, int sock, struct sockaddr_can *sa)
 {
 	int i,s;
@@ -57,9 +69,7 @@ receive_and_check(struct message *msg, int sock, struct sockaddr_can *sa)
         	exit (EXIT_FAILURE);
 	}
 
-	for (i = 0; i < sizeof(*msg); i++)
-    		printf("%x ", ((unsigned char*) msg)[i]);
-   	printf("\n");
+	print_message(msg, s);
 
 	socklen_t len = 0;
 
@@ -81,13 +91,11 @@ receive_and_check(struct message *msg, int sock, struct sockaddr_can *sa)
 		}
 	}
 
-	for (i = 0; i < sizeof(*msg); i++)
- 		printf("%x ", ((unsigned char*) msg)[i]);
- 	printf("\n");
+	print_message(msg, s);
 }
 
 int
-main(void)
+main(int argc, char *argv[])
 {
 	int sock;
 	struct sockaddr_can sa;
@@ -101,9 +109,16 @@ main(void)
 		exit(EXIT_FAILURE);
 	}
 
+	char *ifname= argv[1];
+
+	if (strlen(ifname)>=IFNAMSIZ) {
+		printf("device name is error.\n");
+		exit(EXIT_FAILURE);
+	}
+
 	memset(&sa, 0, sizeof(sa));
 	sa.can_family = AF_CAN;
-	sa.can_ifindex = 7;
+	sa.can_ifindex = if_nametoindex(ifname);
 	sa.can_addr.tp.rx_id = 0;
 	sa.can_addr.tp.tx_id = 0;
 
