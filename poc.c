@@ -67,7 +67,6 @@ void print_message(struct message *msg, int len)
 void communicate_and_check(struct message *msg, int sock, struct sockaddr_can *sa, __u32 expected_opcode)
 {
 	int i, s;
-	socklen_t len = 0;
 
 	printf("Sending:\n");
 	print_message(msg, sizeof(*msg));
@@ -78,7 +77,7 @@ void communicate_and_check(struct message *msg, int sock, struct sockaddr_can *s
 		exit (EXIT_FAILURE);
 	}
 
-	s = recvfrom(sock, msg, sizeof(*msg), 0, (struct sockaddr *)sa, &len);
+	s = recvfrom(sock, msg, sizeof(*msg), 0, NULL, NULL);
 	printf("Received:\n");
 	print_message(msg, s);
 	if (s < sizeof(msg->b)) {
