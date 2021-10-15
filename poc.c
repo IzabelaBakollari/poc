@@ -64,7 +64,7 @@ void print_message(struct message *msg, int len)
    	printf("\n");
 }
 
-void receive_and_check(struct message *msg, int sock, struct sockaddr_can *sa, __u32 expected_opcode)
+void communicate_and_check(struct message *msg, int sock, struct sockaddr_can *sa, __u32 expected_opcode)
 {
 	int i, s;
 	socklen_t len = 0;
@@ -137,13 +137,13 @@ int main(int argc, char *argv[])
 	}
 
 	prepare_tx_setup_msg(&msg);
-	receive_and_check(&msg, sock, &sa, TX_EXPIRED);
+	communicate_and_check(&msg, sock, &sa, TX_EXPIRED);
 
 	prepare_rx_setup_msg(&msg);
-	receive_and_check(&msg, sock, &sa, RX_TIMEOUT);
+	communicate_and_check(&msg, sock, &sa, RX_TIMEOUT);
 
 	prepare_tx_send_msg(&msg);
-	receive_and_check(&msg, sock, &sa, RX_CHANGED);
+	communicate_and_check(&msg, sock, &sa, RX_CHANGED);
 
 	return 0;
 }
