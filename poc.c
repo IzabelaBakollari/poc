@@ -39,10 +39,22 @@ txsetup_sock(struct message *msg)
 	msg->b.opcode = TX_SETUP;
         msg->b.flags = CAN_FD_FRAME | SETTIMER | STARTTIMER | TX_COUNTEVT;
         msg->b.count = 2;
-        msg->b.ival1.tv_sec = msg->b.ival2.tv_sec = 1;
+        msg->b.ival1.tv_sec = msg->b.ival2.tv_sec = 0;
         msg->b.ival1.tv_usec = msg->b.ival2.tv_usec = 1;
         msg->b.can_id = 0;
         msg->b.nframes = 1;
+}
+
+void prepare_tx_send_msg(struct message *msg)
+{
+	memset(msg, 0, sizeof(*msg));
+
+	msg->b.opcode = TX_SEND;
+	msg->b.flags = CAN_FD_FRAME;
+	msg->b.nframes = 1;
+
+	msg->f.len = 1;
+	msg->f.data[0] = 0x42;
 }
 
 void
@@ -56,7 +68,7 @@ print_message(struct message *msg, int s)
 }
 
 void
-receive_and_check(struct message *msg, int sock, struct sockaddr_can *sa)
+receive_and_check(struct message *msg, int sock, struct sockaddr_can *sa, __u32 expected_opcode)
 {
 	int i,s;
 
@@ -79,6 +91,11 @@ receive_and_check(struct message *msg, int sock, struct sockaddr_can *sa)
 	if (s < sizeof(msg->b)) {
        		perror("Message recieved is null");
 		printf("Errno = %d\n", errno);
+		exit(EXIT_FAILURE);
+	}
+
+	if (msg->b.opcode != expected_opcode) {
+		fprintf(stderr, "Unexpected reply opcode received: %u\n", msg->b.opcode);
 		exit(EXIT_FAILURE);
 	}
     
@@ -124,13 +141,14 @@ main(int argc, char *argv[])
 
 	connect(sock, (struct sockaddr *)&sa, sizeof(sa));
 
-	rxsetup_sock(&msg);
-	
-	receive_and_check(&msg, sock, &sa);
-
 	txsetup_sock(&msg);
+	receive_and_check(&msg, sock, &sa, TX_EXPIRED);
 
-	receive_and_check(&msg, sock, &sa);
+	rxsetup_sock(&msg);
+	receive_and_check(&msg, sock, &sa, RX_TIMEOUT);
+
+	prepare_tx_send_msg(&msg);
+	receive_and_check(&msg, sock, &sa, RX_CHANGED);
 
 	return 0;
 }
