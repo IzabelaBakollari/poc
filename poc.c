@@ -38,6 +38,8 @@ static void communicate_and_check(struct message *msg, int sock, const struct so
 	printf("Sending:\n");
 	print_message(msg, sizeof(*msg));
 
+	alarm(1);
+
 	r = sendto(sock, msg, sizeof(*msg), 0, (struct sockaddr *)sa, sizeof(*sa));
 	if (r < 0) {
 		perror("sendto");
@@ -49,6 +51,8 @@ static void communicate_and_check(struct message *msg, int sock, const struct so
 		perror("recvfrom");
 		exit(EXIT_FAILURE);
 	}
+
+	alarm(0);
 
 	printf("Received:\n");
 	print_message(msg, r);
@@ -134,5 +138,6 @@ int main(int argc, char *argv[])
 	};
 	communicate_and_check(&msg, sock, &sa, RX_CHANGED);
 
+	close(sock);
 	return EXIT_SUCCESS;
 }
