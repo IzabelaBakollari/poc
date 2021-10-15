@@ -1,16 +1,12 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdint.h>
-#include <stdarg.h>
-#include <string.h>
-#include <unistd.h>
-#include <errno.h>
-#include <fcntl.h>
-#include <sys/socket.h>
 #include <linux/can.h>
 #include <linux/can/bcm.h>
-#include <sys/ioctl.h>
 #include <net/if.h>
+#include <sys/socket.h>
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
 
 struct message {
 	struct bcm_msg_head b;
@@ -66,21 +62,21 @@ void print_message(struct message *msg, int len)
 
 void communicate_and_check(struct message *msg, int sock, struct sockaddr_can *sa, __u32 expected_opcode)
 {
-	int i, s;
+	int i, r, n;
 
 	printf("Sending:\n");
 	print_message(msg, sizeof(*msg));
 
-	s = sendto(sock, msg, sizeof(*msg), 0, (struct sockaddr *)sa, sizeof(*sa));
-	if (s < 0) {
+	r = sendto(sock, msg, sizeof(*msg), 0, (struct sockaddr *)sa, sizeof(*sa));
+	if (r < 0) {
 		perror("sendto");
 		exit (EXIT_FAILURE);
 	}
 
-	s = recvfrom(sock, msg, sizeof(*msg), 0, NULL, NULL);
+	r = recvfrom(sock, msg, sizeof(*msg), 0, NULL, NULL);
 	printf("Received:\n");
-	print_message(msg, s);
-	if (s < sizeof(msg->b)) {
+	print_message(msg, r);
+	if (r < sizeof(msg->b)) {
        		perror("Did not receive a full message");
 		exit(EXIT_FAILURE);
 	}
@@ -91,7 +87,7 @@ void communicate_and_check(struct message *msg, int sock, struct sockaddr_can *s
 	}
     
 	for (i = 12; i < 16; i++) {
-		char n = ((unsigned char*) msg)[i];
+		n = ((unsigned char*) msg)[i];
 		if (n != 0) {
 			fprintf(stderr, "Non-zero padding byte in the reply!\n");
 			exit(EXIT_FAILURE);
