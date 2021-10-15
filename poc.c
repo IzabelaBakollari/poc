@@ -55,23 +55,21 @@ void prepare_tx_send_msg(struct message *msg)
 	msg->f.data[0] = 0x42;
 }
 
-void print_message(struct message *msg, int s)
+void print_message(struct message *msg, int len)
 {	
 	int i;
 
-	for (i=0; i<s; i++)
+	for (i = 0; i < len; i++)
     		printf("%x ", ((unsigned char*) msg)[i]);
    	printf("\n");
 }
 
-void
-receive_and_check(struct message *msg, int sock, struct sockaddr_can *sa, __u32 expected_opcode)
+void receive_and_check(struct message *msg, int sock, struct sockaddr_can *sa, __u32 expected_opcode)
 {
-	int i,s;
+	int i, s;
+	socklen_t len = 0;
 
-	s = sendto(sock, msg, sizeof(*msg), 0, (struct sockaddr *)sa,
-			sizeof(*sa));
-
+	s = sendto(sock, msg, sizeof(*msg), 0, (struct sockaddr *)sa, sizeof(*sa));
 	if (s < 0) {
 		perror("sendto");
 		printf("Errno = %d\n", errno);
@@ -80,11 +78,7 @@ receive_and_check(struct message *msg, int sock, struct sockaddr_can *sa, __u32 
 
 	print_message(msg, s);
 
-	socklen_t len = 0;
-
-	s = recvfrom(sock, msg, sizeof(*msg), 0,
-			(struct sockaddr *)sa, &len);
-
+	s = recvfrom(sock, msg, sizeof(*msg), 0, (struct sockaddr *)sa, &len);
 	if (s < sizeof(msg->b)) {
        		perror("Message recieved is null");
 		printf("Errno = %d\n", errno);
@@ -108,15 +102,13 @@ receive_and_check(struct message *msg, int sock, struct sockaddr_can *sa, __u32 
 	print_message(msg, s);
 }
 
-int
-main(int argc, char *argv[])
+int main(int argc, char *argv[])
 {
 	int sock;
 	struct sockaddr_can sa;
 	struct message msg;
 
 	sock = socket(AF_CAN, SOCK_DGRAM, CAN_BCM);
-
 	if (sock < 0) {
 		perror("sock");
 		printf("Errno = %d\n", errno);
