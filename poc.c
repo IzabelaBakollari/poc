@@ -69,19 +69,20 @@ void receive_and_check(struct message *msg, int sock, struct sockaddr_can *sa, _
 	int i, s;
 	socklen_t len = 0;
 
+	printf("Sending:\n");
+	print_message(msg, sizeof(*msg));
+
 	s = sendto(sock, msg, sizeof(*msg), 0, (struct sockaddr *)sa, sizeof(*sa));
 	if (s < 0) {
 		perror("sendto");
-		printf("Errno = %d\n", errno);
 		exit (EXIT_FAILURE);
 	}
 
-	print_message(msg, s);
-
 	s = recvfrom(sock, msg, sizeof(*msg), 0, (struct sockaddr *)sa, &len);
+	printf("Received:\n");
+	print_message(msg, s);
 	if (s < sizeof(msg->b)) {
-       		perror("Message recieved is null");
-		printf("Errno = %d\n", errno);
+       		perror("Did not receive a full message");
 		exit(EXIT_FAILURE);
 	}
 
@@ -93,42 +94,47 @@ void receive_and_check(struct message *msg, int sock, struct sockaddr_can *sa, _
 	for (i = 12; i < 16; i++) {
 		char n = ((unsigned char*) msg)[i];
 		if (n != 0) {
-			perror("Padding bytes are corrupted");
-			printf("%x\n ", n);
+			fprintf(stderr, "Non-zero padding byte in the reply!\n");
 			exit(EXIT_FAILURE);
 		}
 	}
-
-	print_message(msg, s);
 }
 
 int main(int argc, char *argv[])
 {
-	int sock;
+	int sock, r;
 	struct sockaddr_can sa;
 	struct message msg;
+	unsigned ifindex;
 
-	sock = socket(AF_CAN, SOCK_DGRAM, CAN_BCM);
-	if (sock < 0) {
-		perror("sock");
-		printf("Errno = %d\n", errno);
+	if (argc != 2) {
+		fprintf(stderr, "Usage: %s <CAN-interface-name>\n", argv[0]);
 		exit(EXIT_FAILURE);
 	}
 
-	char *ifname= argv[1];
-
-	if (strlen(ifname)>=IFNAMSIZ) {
-		printf("device name is error.\n");
+	ifindex = if_nametoindex(argv[1]);
+	if (!ifindex) {
+		perror("if_nametoindex");
 		exit(EXIT_FAILURE);
 	}
 
 	memset(&sa, 0, sizeof(sa));
 	sa.can_family = AF_CAN;
-	sa.can_ifindex = if_nametoindex(ifname);
+	sa.can_ifindex = ifindex;
 	sa.can_addr.tp.rx_id = 0;
 	sa.can_addr.tp.tx_id = 0;
 
-	connect(sock, (struct sockaddr *)&sa, sizeof(sa));
+	sock = socket(AF_CAN, SOCK_DGRAM, CAN_BCM);
+	if (sock < 0) {
+		perror("sock");
+		exit(EXIT_FAILURE);
+	}
+
+	r = connect(sock, (struct sockaddr *)&sa, sizeof(sa));
+	if (r < 0) {
+		perror("connect");
+		exit(EXIT_FAILURE);
+	}
 
 	prepare_tx_setup_msg(&msg);
 	receive_and_check(&msg, sock, &sa, TX_EXPIRED);
