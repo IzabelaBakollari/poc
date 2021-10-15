@@ -2,7 +2,6 @@
 #include <linux/can/bcm.h>
 #include <net/if.h>
 #include <sys/socket.h>
-
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -132,7 +131,6 @@ int main(int argc, char *argv[])
 		.b.opcode = TX_SEND,
 		.b.flags = CAN_FD_FRAME,
 		.b.nframes = 1,
-
 		.f.len = 1,
 		.f.data = { 0x42, },
 	};
