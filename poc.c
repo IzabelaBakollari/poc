@@ -17,32 +17,30 @@ struct message {
 	struct canfd_frame f;
 };
 
-void
-rxsetup_sock(struct message *msg)
+void prepare_rx_setup_msg(struct message *msg)
 {
 	memset(msg, 0, sizeof(*msg));
 
-        msg->b.opcode = RX_SETUP;
-        msg->b.flags = CAN_FD_FRAME | SETTIMER | STARTTIMER;
-        msg->b.count = 0;
-        msg->b.ival1.tv_sec = msg->b.ival2.tv_sec = 0;
-        msg->b.ival1.tv_usec = msg->b.ival2.tv_usec = 1;
-        msg->b.can_id = 0;
-        msg->b.nframes = 1;
+	msg->b.opcode = RX_SETUP;
+	msg->b.flags = CAN_FD_FRAME | SETTIMER | STARTTIMER;
+	msg->b.count = 0;
+	msg->b.ival1.tv_sec = msg->b.ival2.tv_sec = 0;
+	msg->b.ival1.tv_usec = msg->b.ival2.tv_usec = 1;
+	msg->b.can_id = 0;
+	msg->b.nframes = 1;
 }
 
-void
-txsetup_sock(struct message *msg)
+void prepare_tx_setup_msg(struct message *msg)
 {
 	memset(msg, 0, sizeof(*msg));
 
 	msg->b.opcode = TX_SETUP;
-        msg->b.flags = CAN_FD_FRAME | SETTIMER | STARTTIMER | TX_COUNTEVT;
-        msg->b.count = 2;
-        msg->b.ival1.tv_sec = msg->b.ival2.tv_sec = 0;
-        msg->b.ival1.tv_usec = msg->b.ival2.tv_usec = 1;
-        msg->b.can_id = 0;
-        msg->b.nframes = 1;
+	msg->b.flags = CAN_FD_FRAME | SETTIMER | STARTTIMER | TX_COUNTEVT;
+	msg->b.count = 2;
+	msg->b.ival1.tv_sec = msg->b.ival2.tv_sec = 0;
+	msg->b.ival1.tv_usec = msg->b.ival2.tv_usec = 1;
+	msg->b.can_id = 0;
+	msg->b.nframes = 1;
 }
 
 void prepare_tx_send_msg(struct message *msg)
@@ -57,8 +55,7 @@ void prepare_tx_send_msg(struct message *msg)
 	msg->f.data[0] = 0x42;
 }
 
-void
-print_message(struct message *msg, int s)
+void print_message(struct message *msg, int s)
 {	
 	int i;
 
@@ -76,9 +73,9 @@ receive_and_check(struct message *msg, int sock, struct sockaddr_can *sa, __u32 
 			sizeof(*sa));
 
 	if (s < 0) {
-        	perror("sendto");
+		perror("sendto");
 		printf("Errno = %d\n", errno);
-        	exit (EXIT_FAILURE);
+		exit (EXIT_FAILURE);
 	}
 
 	print_message(msg, s);
@@ -141,10 +138,10 @@ main(int argc, char *argv[])
 
 	connect(sock, (struct sockaddr *)&sa, sizeof(sa));
 
-	txsetup_sock(&msg);
+	prepare_tx_setup_msg(&msg);
 	receive_and_check(&msg, sock, &sa, TX_EXPIRED);
 
-	rxsetup_sock(&msg);
+	prepare_rx_setup_msg(&msg);
 	receive_and_check(&msg, sock, &sa, RX_TIMEOUT);
 
 	prepare_tx_send_msg(&msg);
