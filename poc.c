@@ -136,6 +136,5 @@ int main(int argc, char *argv[])
 	};
 	communicate_and_check(&msg, sock, &sa, RX_CHANGED);
 
-	close(sock);
 	return EXIT_SUCCESS;
 }
