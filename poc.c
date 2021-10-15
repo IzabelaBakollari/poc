@@ -13,44 +13,6 @@ struct message {
 	struct canfd_frame f;
 };
 
-void prepare_rx_setup_msg(struct message *msg)
-{
-	memset(msg, 0, sizeof(*msg));
-
-	msg->b.opcode = RX_SETUP;
-	msg->b.flags = CAN_FD_FRAME | SETTIMER | STARTTIMER;
-	msg->b.count = 0;
-	msg->b.ival1.tv_sec = msg->b.ival2.tv_sec = 0;
-	msg->b.ival1.tv_usec = msg->b.ival2.tv_usec = 1;
-	msg->b.can_id = 0;
-	msg->b.nframes = 1;
-}
-
-void prepare_tx_setup_msg(struct message *msg)
-{
-	memset(msg, 0, sizeof(*msg));
-
-	msg->b.opcode = TX_SETUP;
-	msg->b.flags = CAN_FD_FRAME | SETTIMER | STARTTIMER | TX_COUNTEVT;
-	msg->b.count = 2;
-	msg->b.ival1.tv_sec = msg->b.ival2.tv_sec = 0;
-	msg->b.ival1.tv_usec = msg->b.ival2.tv_usec = 1;
-	msg->b.can_id = 0;
-	msg->b.nframes = 1;
-}
-
-void prepare_tx_send_msg(struct message *msg)
-{
-	memset(msg, 0, sizeof(*msg));
-
-	msg->b.opcode = TX_SEND;
-	msg->b.flags = CAN_FD_FRAME;
-	msg->b.nframes = 1;
-
-	msg->f.len = 1;
-	msg->f.data[0] = 0x42;
-}
-
 void print_message(struct message *msg, int len)
 {	
 	int i;
@@ -131,13 +93,32 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
-	prepare_tx_setup_msg(&msg);
+	msg = (struct message) {
+		.b.opcode = TX_SETUP,
+		.b.flags = CAN_FD_FRAME | SETTIMER | STARTTIMER | TX_COUNTEVT,
+		.b.count = 2,
+		.b.ival1 = { 0, 1 },
+		.b.ival2 = { 0, 1 },
+		.b.nframes = 1,
+	};
 	communicate_and_check(&msg, sock, &sa, TX_EXPIRED);
 
-	prepare_rx_setup_msg(&msg);
+	msg = (struct message) {
+		.b.opcode = RX_SETUP,
+		.b.flags = CAN_FD_FRAME | SETTIMER | STARTTIMER,
+		.b.ival1 = { 0, 1 },
+		.b.ival2 = { 0, 1 },
+		.b.nframes = 1,
+	};
 	communicate_and_check(&msg, sock, &sa, RX_TIMEOUT);
 
-	prepare_tx_send_msg(&msg);
+	msg = (struct message) {
+		.b.opcode = TX_SEND,
+		.b.flags = CAN_FD_FRAME,
+		.b.nframes = 1,
+		.f.len = 1,
+		.f.data = { 0x42, },
+	};
 	communicate_and_check(&msg, sock, &sa, RX_CHANGED);
 
 	return 0;
