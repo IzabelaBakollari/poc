@@ -18,7 +18,7 @@ struct message {
 };
 
 void
-rxsetup_sock(struct message *msg)
+rxsetup(struct message *msg)
 {
 	memset(msg, 0, sizeof(*msg));
 
@@ -32,7 +32,7 @@ rxsetup_sock(struct message *msg)
 }
 
 void
-txsetup_sock(struct message *msg)
+txsetup(struct message *msg)
 {
 	memset(msg, 0, sizeof(*msg));
 
@@ -48,9 +48,7 @@ txsetup_sock(struct message *msg)
 void
 print_message(struct message *msg, int s)
 {	
-	int i;
-
-	for (i=0; i<s; i++)
+	for (int i=0; i<s; i++)
     		printf("%x ", ((unsigned char*) msg)[i]);
    	printf("\n");
 }
@@ -58,9 +56,7 @@ print_message(struct message *msg, int s)
 void
 receive_and_check(struct message *msg, int sock, struct sockaddr_can *sa)
 {
-	int i,s;
-
-	s = sendto(sock, msg, sizeof(*msg), 0, (struct sockaddr *)sa,
+	int s = sendto(sock, msg, sizeof(*msg), 0, (struct sockaddr *)sa,
 			sizeof(*sa));
 
 	if (s < 0) {
@@ -82,7 +78,7 @@ receive_and_check(struct message *msg, int sock, struct sockaddr_can *sa)
 		exit(EXIT_FAILURE);
 	}
     
-	for (i = 12; i < 16; i++) {
+	for (int i = 12; i < 16; i++) {
 		char n = ((unsigned char*) msg)[i];
 		if (n != 0) {
 			perror("Padding bytes are corrupted");
@@ -97,38 +93,52 @@ receive_and_check(struct message *msg, int sock, struct sockaddr_can *sa)
 int
 main(int argc, char *argv[])
 {
-	int sock;
 	struct sockaddr_can sa;
 	struct message msg;
 
-	sock = socket(AF_CAN, SOCK_DGRAM, CAN_BCM);
+	int sock = socket(AF_CAN, SOCK_DGRAM, CAN_BCM);
 
 	if (sock < 0) {
-		perror("sock");
+		perror("Socket failure");
+		printf("Errno = %d\n", errno);
+		exit(EXIT_FAILURE);
+	}
+
+	if (argc != 2) {
+		perror("Please provide one argument\n");
 		printf("Errno = %d\n", errno);
 		exit(EXIT_FAILURE);
 	}
 
 	char *ifname= argv[1];
 
-	if (strlen(ifname)>=IFNAMSIZ) {
-		printf("device name is error.\n");
+	int getindex = if_nametoindex(ifname);
+
+	if (getindex == 0) {
+		perror("Interface not valid\n");
+		printf("Errno = %d\n", errno);
 		exit(EXIT_FAILURE);
 	}
 
 	memset(&sa, 0, sizeof(sa));
 	sa.can_family = AF_CAN;
-	sa.can_ifindex = if_nametoindex(ifname);
+	sa.can_ifindex = getindex;
 	sa.can_addr.tp.rx_id = 0;
 	sa.can_addr.tp.tx_id = 0;
 
-	connect(sock, (struct sockaddr *)&sa, sizeof(sa));
+	int con = connect(sock, (struct sockaddr *)&sa, sizeof(sa));
 
-	rxsetup_sock(&msg);
+	if (con < 0) {
+		perror("Connection failure");
+		printf("Errno = %d\n", errno);
+		exit(EXIT_FAILURE);
+	}
+
+	rxsetup(&msg);
 	
 	receive_and_check(&msg, sock, &sa);
 
-	txsetup_sock(&msg);
+	txsetup(&msg);
 
 	receive_and_check(&msg, sock, &sa);
 
