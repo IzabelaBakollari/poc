@@ -60,7 +60,7 @@ receive_and_check(struct message *msg, int sock, struct sockaddr_can *sa)
 			sizeof(*sa));
 
 	if (s < 0) {
-		perror("sendto");
+		perror("Sending incomplete message");
 		printf("Errno = %d\n", errno);
 		exit (EXIT_FAILURE);
 	}
@@ -73,15 +73,14 @@ receive_and_check(struct message *msg, int sock, struct sockaddr_can *sa)
 			(struct sockaddr *)sa, &len);
 
 	if (s < sizeof(msg->b)) {
-		perror("Message recieved is null");
-		printf("Errno = %d\n", errno);
+		printf("Recieved message is incomplete\n");
 		exit(EXIT_FAILURE);
 	}
 
 	for (int i = 12; i < 16; i++) {
 		char n = ((unsigned char*) msg)[i];
 		if (n != 0) {
-			perror("Padding bytes are corrupted");
+			printf("Padding bytes are corrupted\n");
 			printf("%x\n ", n);
 			exit(EXIT_FAILURE);
 		}
@@ -105,8 +104,7 @@ main(int argc, char *argv[])
 	}
 
 	if (argc != 2) {
-		perror("Please provide one argument\n");
-		printf("Errno = %d\n", errno);
+		printf("Please provide one argument\n");
 		exit(EXIT_FAILURE);
 	}
 
@@ -115,7 +113,7 @@ main(int argc, char *argv[])
 	int getindex = if_nametoindex(ifname);
 
 	if (getindex == 0) {
-		perror("Interface not valid\n");
+		perror("Interface is not valid");
 		printf("Errno = %d\n", errno);
 		exit(EXIT_FAILURE);
 	}
