@@ -83,7 +83,9 @@ int main(int argc, char *argv[])
 	unsigned ifindex;
 
 	if (argc != 2) {
-		fprintf(stderr, "Usage: %s <CAN-interface-name>\n", argv[0]);
+		fprintf(stderr, "Usage: %s <CAN-interface-name>\n"
+		                "Hint - a virtual CAN device will suffice. It can be set up with:\n"
+		                "  ip link add name testcan type vcan && ip link set testcan up\n", argv[0]);
 		exit(EXIT_FAILURE);
 	}
 
