@@ -29,7 +29,7 @@ static void print_message(struct message *msg, int len)
 		printf("\n");
 }
 
-static void communicate_and_check(struct message *msg, int sock, const struct sockaddr_can *sa, __u32 expected_opcode)
+static int communicate_and_check(struct message *msg, int sock, const struct sockaddr_can *sa, __u32 expected_opcode)
 {
 	int i, r;
 	char n;
@@ -65,15 +65,18 @@ static void communicate_and_check(struct message *msg, int sock, const struct so
 		exit(EXIT_FAILURE);
 	}
 
+	r = 0;
 	for (i = offsetof(struct bcm_msg_head, count) + sizeof(((struct bcm_msg_head){}).count);
 	     i < offsetof(struct bcm_msg_head, ival1);
 	     i++) {
 		n = ((char*) msg)[i];
-		if (n != 0) {
+		if (n != 0 && r == 0) {
 			fprintf(stderr, "Non-zero padding byte in the reply!\n");
-			exit(EXIT_FAILURE);
+			r = 1;
 		}
 	}
+
+	return r;
 }
 
 int main(int argc, char *argv[])
@@ -119,7 +122,7 @@ int main(int argc, char *argv[])
 		.b.ival1 = { 0, 1 },
 		.b.nframes = 1,
 	};
-	communicate_and_check(&msg, sock, &sa, TX_EXPIRED);
+	r = communicate_and_check(&msg, sock, &sa, TX_EXPIRED);
 
 	msg = (struct message) {
 		.b.opcode = RX_SETUP,
@@ -127,7 +130,7 @@ int main(int argc, char *argv[])
 		.b.ival1 = { 0, 1 },
 		.b.nframes = 1,
 	};
-	communicate_and_check(&msg, sock, &sa, RX_TIMEOUT);
+	r |= communicate_and_check(&msg, sock, &sa, RX_TIMEOUT);
 
 	msg = (struct message) {
 		.b.opcode = TX_SEND,
@@ -136,7 +139,7 @@ int main(int argc, char *argv[])
 		.f.len = 1,
 		.f.data = { 0x42, },
 	};
-	communicate_and_check(&msg, sock, &sa, RX_CHANGED);
+	r |= communicate_and_check(&msg, sock, &sa, RX_CHANGED);
 
-	return EXIT_SUCCESS;
+	return r;
 }
