@@ -18,6 +18,20 @@ struct message {
 };
 
 void
+txsetup(struct message *msg)
+{
+	memset(msg, 0, sizeof(*msg));
+
+	msg->b.opcode = TX_SETUP;
+	msg->b.flags = CAN_FD_FRAME | SETTIMER | STARTTIMER | TX_COUNTEVT;
+	msg->b.count = 2;
+	msg->b.ival1.tv_sec = msg->b.ival2.tv_sec = 1;
+	msg->b.ival1.tv_usec = msg->b.ival2.tv_usec = 1;
+	msg->b.can_id = 0;
+	msg->b.nframes = 1;
+}
+
+void
 rxsetup(struct message *msg)
 {
 	memset(msg, 0, sizeof(*msg));
@@ -32,14 +46,14 @@ rxsetup(struct message *msg)
 }
 
 void
-txsetup(struct message *msg)
+rxchanged(struct message *msg)
 {
 	memset(msg, 0, sizeof(*msg));
 
-	msg->b.opcode = TX_SETUP;
-	msg->b.flags = CAN_FD_FRAME | SETTIMER | STARTTIMER | TX_COUNTEVT;
-	msg->b.count = 2;
-	msg->b.ival1.tv_sec = msg->b.ival2.tv_sec = 1;
+	msg->b.opcode = TX_SEND;
+	msg->b.flags = CAN_FD_FRAME;
+	msg->b.count = 0;
+	msg->b.ival1.tv_sec = msg->b.ival2.tv_sec = 0;
 	msg->b.ival1.tv_usec = msg->b.ival2.tv_usec = 1;
 	msg->b.can_id = 0;
 	msg->b.nframes = 1;
@@ -110,7 +124,7 @@ main(int argc, char *argv[])
 
 	char *ifname= argv[1];
 
-	int getindex = if_nametoindex(ifname);
+	unsigned int getindex = if_nametoindex(ifname);
 
 	if (getindex == 0) {
 		perror("Interface is not valid");
@@ -132,11 +146,15 @@ main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
+	txsetup(&msg);
+
+	receive_and_check(&msg, sock, &sa);
+
 	rxsetup(&msg);
 
 	receive_and_check(&msg, sock, &sa);
 
-	txsetup(&msg);
+	rxchanged(&msg);
 
 	receive_and_check(&msg, sock, &sa);
 
