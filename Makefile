@@ -2,7 +2,7 @@ CC = gcc
 CFLAGS = -Wall -g
 
 # Just compile/link all files in one hit.
-demo: poc.c
+poc: poc.c
 	${CC} ${CFLAGS} -o poc poc.c
 
 clean:
