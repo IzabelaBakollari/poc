@@ -50,10 +50,10 @@ static int receive_and_check(struct message *msg, int sock, struct sockaddr_can 
 	print_message(msg, s);
 
 
-	for (int i = 0; i < 16; i++) {
+	for (int i = 12; i < 16; i++) {
 		char n = ((unsigned char*) msg)[i];
 		if (n != 0) {
-			printf("Padding bytes with index number %x,n are corrupted\n", i);
+			printf("Padding bytes with index number %x are corrupted\n", i);
 			printf("%x\n ", n);
 			return 1;
 		}
