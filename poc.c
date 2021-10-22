@@ -12,99 +12,7 @@
 #include <sys/ioctl.h>
 #include <net/if.h>
 
-struct message {
-	struct bcm_msg_head b;
-	struct canfd_frame f;
-};
-
-static void print_message(struct message *msg, int s)
-{
-	for (int i=0; i<s; i++)
-		printf("%x ", ((unsigned char*) msg)[i]);
-	printf("\n");
-}
-
-static int receive_and_check(struct message *msg, int sock, struct sockaddr_can *sa)
-{
-	int s = sendto(sock, msg, sizeof(*msg), 0, (struct sockaddr *)sa,
-			sizeof(*sa));
-
-	if (s < 0) {
-		perror("Sending incomplete message");
-		printf("Errno = %d\n", errno);
-		exit (EXIT_FAILURE);
-	}
-
-	print_message(msg, s);
-
-	socklen_t len = 0;
-
-	s = recvfrom(sock, msg, sizeof(*msg), 0,
-			(struct sockaddr *)sa, &len);
-
-	if (s < sizeof(msg->b)) {
-		printf("Recieved message is incomplete\n");
-		exit(EXIT_FAILURE);
-	}
-
-	print_message(msg, s);
-
-
-	for (int i = 0; i < 16; i++) {
-		char n = ((unsigned char*) msg)[i];
-		if (n != 0) {
-			printf("Padding bytes with index number %x,n are corrupted\n", i);
-			printf("%x\n ", n);
-			return 1;
-		}
-	}
-	return 0;
-}
-
-static void txsetup(struct message *msg, int sock, struct sockaddr_can *sa)
-{
-	memset(msg, 0, sizeof(*msg));
-
-	msg->b.opcode = TX_SETUP;
-	msg->b.flags = CAN_FD_FRAME | SETTIMER | STARTTIMER | TX_COUNTEVT;
-	msg->b.count = 2;
-	msg->b.ival1.tv_sec = msg->b.ival2.tv_sec = 1;
-	msg->b.ival1.tv_usec = msg->b.ival2.tv_usec = 1;
-	msg->b.can_id = 0;
-	msg->b.nframes = 1;
-
-	receive_and_check(msg, sock, sa);
-}
-
-static void rxsetup(struct message *msg, int sock, struct sockaddr_can *sa)
-{
-	memset(msg, 0, sizeof(*msg));
-
-	msg->b.opcode = RX_SETUP;
-	msg->b.flags = CAN_FD_FRAME | SETTIMER | STARTTIMER;
-	msg->b.count = 0;
-	msg->b.ival1.tv_sec = msg->b.ival2.tv_sec = 0;
-	msg->b.ival1.tv_usec = msg->b.ival2.tv_usec = 1;
-	msg->b.can_id = 0;
-	msg->b.nframes = 1;
-
-	receive_and_check(msg, sock, sa);
-}
-
-static void rxchanged(struct message *msg, int sock, struct sockaddr_can *sa)
-{
-	memset(msg, 0, sizeof(*msg));
-
-	msg->b.opcode = TX_SEND;
-	msg->b.flags = CAN_FD_FRAME;
-	msg->b.count = 0;
-	msg->b.ival1.tv_sec = msg->b.ival2.tv_sec = 0;
-	msg->b.ival1.tv_usec = msg->b.ival2.tv_usec = 1;
-	msg->b.can_id = 0;
-	msg->b.nframes = 1;
-
-	receive_and_check(msg, sock, sa);
-}
+#include "functions.h"
 
 int main(int argc, char *argv[])
 {
@@ -148,11 +56,17 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
-	txsetup(&msg, sock, &sa);
+	txsetup(&msg);
 
-	rxsetup(&msg, sock, &sa);
+	receive_and_check(&msg, sock, &sa);
 
-	rxchanged(&msg, sock, &sa);
+	rxsetup(&msg);
+
+	receive_and_check(&msg, sock, &sa);
+
+	rxchanged(&msg);
+
+	receive_and_check(&msg, sock, &sa);
 
 	return 0;
 }
