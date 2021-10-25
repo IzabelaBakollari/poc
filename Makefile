@@ -1,6 +1,9 @@
 CC = gcc
 CFLAGS = -Wall -g
 
+poc: txsetup.o rxsetup.o rxchanged.o check.o poc.o functions.h
+	$(CC) txsetup.o rxsetup.o rxchanged.o check.o poc.o -o poc
+
 poc.o: poc.c  functions.h
 	${CC} ${CFLAGS} -c poc.c
 
@@ -16,10 +19,6 @@ rxchanged.o: rxsetup.c  functions.h
 
 check.o: check.c functions.h
 	${CC} ${CFLAGS}  -c check.c
-
-
-poc: txsetup.o rxsetup.o rxchanged.o check.o poc.o functions.h
-	$(CC) txsetup.o rxsetup.o rxchanged.o check.o poc.o -o poc
 	
 clean:
 	rm -rf txsetup.o rxsetup.o rxchanged.o check.o poc.o poc

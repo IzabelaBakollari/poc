@@ -14,6 +14,13 @@
 
 #include "functions.h"
 
+void print_message(struct message *msg, int s)
+{
+	for (int i=0; i<s; i++)
+		printf("%x ", ((unsigned char*) msg)[i]);
+	printf("\n");
+}
+
 
 int receive_and_check(struct message *msg, int sock, struct sockaddr_can *sa)
 {
@@ -50,11 +57,4 @@ int receive_and_check(struct message *msg, int sock, struct sockaddr_can *sa)
 		}
 	}
 	return 0;
-}
-
-static void print_message(struct message *msg, int s)
-{
-	for (int i=0; i<s; i++)
-		printf("%x ", ((unsigned char*) msg)[i]);
-	printf("\n");
 }

@@ -26,5 +26,5 @@ int rxchanged(struct message *msg, int sock, struct sockaddr_can *sa)
 	msg->b.can_id = 0;
 	msg->b.nframes = 1;
 
-	return receive_and_check(&msg, sock, &sa);
+	return receive_and_check(msg, sock, sa);
 }

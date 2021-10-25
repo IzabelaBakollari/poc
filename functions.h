@@ -6,6 +6,8 @@ struct message {
 	struct canfd_frame f;
 };
 
+extern void print_message(struct message *msg, int s);
+
 extern int receive_and_check(struct message *msg, int sock, struct sockaddr_can *sa);
 
 extern int txsetup(struct message *msg, int sock, struct sockaddr_can *sa);
