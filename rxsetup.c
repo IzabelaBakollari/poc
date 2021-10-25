@@ -14,7 +14,7 @@
 
 #include "functions.h"
 
-void rxsetup(struct message *msg)
+int rxsetup(struct message *msg, int sock, struct sockaddr_can *sa)
 {
 	memset(msg, 0, sizeof(*msg));
 
@@ -25,4 +25,7 @@ void rxsetup(struct message *msg)
 	msg->b.ival1.tv_usec = msg->b.ival2.tv_usec = 1;
 	msg->b.can_id = 0;
 	msg->b.nframes = 1;
+
+	return receive_and_check(&msg, sock, &sa);
+
 }

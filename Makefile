@@ -20,3 +20,6 @@ check.o: check.c functions.h
 
 poc: txsetup.o rxsetup.o rxchanged.o check.o poc.o functions.h
 	$(CC) txsetup.o rxsetup.o rxchanged.o check.o poc.o -o poc
+	
+clean:
+	rm -rf txsetup.o rxsetup.o rxchanged.o check.o poc.o poc

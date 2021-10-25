@@ -56,17 +56,14 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
-	txsetup(&msg);
+	int r1 = txsetup(&msg, sock, &sa);
 
-	receive_and_check(&msg, sock, &sa);
+	int r2 = rxsetup(&msg, sock, &sa);
 
-	rxsetup(&msg);
+	int r3 = rxchanged(&msg, sock, &sa);
 
-	receive_and_check(&msg, sock, &sa);
+	if (r1==0 && r2==0 && r3==0)
+   		return 0;
 
-	rxchanged(&msg);
-
-	receive_and_check(&msg, sock, &sa);
-
-	return 0;
+	return 1;
 }
