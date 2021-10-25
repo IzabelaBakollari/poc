@@ -1,11 +1,7 @@
-CC = gcc
-CFLAGS = -Wall -g
+.PHONY: clean
 
-poc: poc.o
-	$(CC) poc.o -o poc
-
-poc.o: poc.c
-	${CC} ${CFLAGS} -c poc.c
+poc: poc.c
+	gcc -Wall -Werror -g -o $@ $<
 
 clean:
-	rm -rf poc.o poc
+	rm poc
