@@ -49,16 +49,16 @@ static int receive_and_check(struct message *msg, int sock, struct sockaddr_can 
 
 	print_message(msg, s);
 
-
+	int b =0;
 	for (int i = 12; i < 16; i++) {
 		char n = ((unsigned char*) msg)[i];
 		if (n != 0) {
 			printf("Padding bytes with index number %x are corrupted\n", i);
-			printf("%x\n ", n);
-			return 1;
+			printf("%x ", n);
+			b = 1;
 		}
 	}
-	return 0;
+	return b;
 }
 
 static int txsetup(struct message *msg, int sock, struct sockaddr_can *sa)
@@ -148,15 +148,9 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
-	int r1 = txsetup(&msg, sock, &sa);
+	int r = txsetup(&msg, sock, &sa);
+	r |= rxsetup(&msg, sock, &sa);
+	r |= rxchanged(&msg, sock, &sa);
 
-	int r2 = rxsetup(&msg, sock, &sa);
-
-	int r3 = rxchanged(&msg, sock, &sa);
-
-	if (r1==0 && r2==0 && r3==0)
-   		return 0;
-
-	return 1;
-
+	return r;
 }
