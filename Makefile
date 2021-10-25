@@ -1,9 +1,11 @@
 CC = gcc
 CFLAGS = -Wall -g
 
-# Just compile/link all files in one hit.
-poc: poc.c
-	${CC} ${CFLAGS} -o poc poc.c
+poc: poc.o
+	$(CC) poc.o -o poc
+
+poc.o: poc.c
+	${CC} ${CFLAGS} -c poc.c
 
 clean:
-	rm -f poc
+	rm -rf poc.o poc

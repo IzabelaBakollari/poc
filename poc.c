@@ -61,7 +61,7 @@ static int receive_and_check(struct message *msg, int sock, struct sockaddr_can 
 	return 0;
 }
 
-static void txsetup(struct message *msg, int sock, struct sockaddr_can *sa)
+static int txsetup(struct message *msg, int sock, struct sockaddr_can *sa)
 {
 	memset(msg, 0, sizeof(*msg));
 
@@ -73,10 +73,10 @@ static void txsetup(struct message *msg, int sock, struct sockaddr_can *sa)
 	msg->b.can_id = 0;
 	msg->b.nframes = 1;
 
-	receive_and_check(msg, sock, sa);
+	return receive_and_check(msg, sock, sa);
 }
 
-static void rxsetup(struct message *msg, int sock, struct sockaddr_can *sa)
+static int rxsetup(struct message *msg, int sock, struct sockaddr_can *sa)
 {
 	memset(msg, 0, sizeof(*msg));
 
@@ -88,10 +88,10 @@ static void rxsetup(struct message *msg, int sock, struct sockaddr_can *sa)
 	msg->b.can_id = 0;
 	msg->b.nframes = 1;
 
-	receive_and_check(msg, sock, sa);
+	return receive_and_check(msg, sock, sa);
 }
 
-static void rxchanged(struct message *msg, int sock, struct sockaddr_can *sa)
+static int rxchanged(struct message *msg, int sock, struct sockaddr_can *sa)
 {
 	memset(msg, 0, sizeof(*msg));
 
@@ -103,7 +103,7 @@ static void rxchanged(struct message *msg, int sock, struct sockaddr_can *sa)
 	msg->b.can_id = 0;
 	msg->b.nframes = 1;
 
-	receive_and_check(msg, sock, sa);
+	return receive_and_check(msg, sock, sa);
 }
 
 int main(int argc, char *argv[])
@@ -148,11 +148,15 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
-	txsetup(&msg, sock, &sa);
+	int r1 = txsetup(&msg, sock, &sa);
 
-	rxsetup(&msg, sock, &sa);
+	int r2 = rxsetup(&msg, sock, &sa);
 
-	rxchanged(&msg, sock, &sa);
+	int r3 = rxchanged(&msg, sock, &sa);
 
-	return 0;
+	if (r1==0 && r2==0 && r3==0)
+   		return 0;
+
+	return 1;
+
 }
