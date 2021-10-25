@@ -1,162 +1,145 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdint.h>
-#include <stdarg.h>
-#include <string.h>
-#include <unistd.h>
-#include <errno.h>
-#include <fcntl.h>
-#include <sys/socket.h>
 #include <linux/can.h>
 #include <linux/can/bcm.h>
-#include <sys/ioctl.h>
 #include <net/if.h>
+#include <sys/socket.h>
+#include <stddef.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
 
 struct message {
 	struct bcm_msg_head b;
 	struct canfd_frame f;
 };
 
-static void print_message(struct message *msg, int s)
+static void print_message(struct message *msg, int len)
 {
-	for (int i=0; i<s; i++)
-		printf("%x ", ((unsigned char*) msg)[i]);
-	printf("\n");
-}
+	int i;
 
-static int receive_and_check(struct message *msg, int sock, struct sockaddr_can *sa)
-{
-	int s = sendto(sock, msg, sizeof(*msg), 0, (struct sockaddr *)sa,
-			sizeof(*sa));
-
-	if (s < 0) {
-		perror("Sending incomplete message");
-		printf("Errno = %d\n", errno);
-		exit (EXIT_FAILURE);
+	for (i = 0; i < len; i++) {
+		if (i % 16 == 0)
+			printf("%04x  ", i);
+		printf("%02x ", ((unsigned char*) msg)[i]);
+		if (i % 16 == 15)
+			printf("\n");
 	}
 
-	print_message(msg, s);
+	if (i % 16)
+		printf("\n");
+}
 
-	socklen_t len = 0;
+static int communicate_and_check(struct message *msg, int sock, const struct sockaddr_can *sa, __u32 expected_opcode)
+{
+	int i, r;
+	char n;
 
-	s = recvfrom(sock, msg, sizeof(*msg), 0,
-			(struct sockaddr *)sa, &len);
+	printf("Sending:\n");
+	print_message(msg, sizeof(*msg));
 
-	if (s < sizeof(msg->b)) {
-		printf("Recieved message is incomplete\n");
+	alarm(1);
+
+	r = sendto(sock, msg, sizeof(*msg), 0, (struct sockaddr *)sa, sizeof(*sa));
+	if (r < 0) {
+		perror("sendto");
 		exit(EXIT_FAILURE);
 	}
 
-	print_message(msg, s);
+	r = recvfrom(sock, msg, sizeof(*msg), 0, NULL, NULL);
+	if (r < 0) {
+		perror("recvfrom");
+		exit(EXIT_FAILURE);
+	}
 
+	alarm(0);
 
-	for (int i = 12; i < 16; i++) {
-		char n = ((unsigned char*) msg)[i];
-		if (n != 0) {
-			printf("Padding bytes with index number %x are corrupted\n", i);
-			printf("%x\n ", n);
-			return 1;
+	printf("Received:\n");
+	print_message(msg, r);
+	if (r < sizeof(msg->b)) {
+		fprintf(stderr, "The received message is too short, only %d bytes.\n", r);
+		exit(EXIT_FAILURE);
+	}
+
+	if (msg->b.opcode != expected_opcode) {
+		fprintf(stderr, "Unexpected opcode in the reply: 0x%08x\n", msg->b.opcode);
+		exit(EXIT_FAILURE);
+	}
+
+	r = 0;
+	for (i = offsetof(struct bcm_msg_head, count) + sizeof(((struct bcm_msg_head){}).count);
+	     i < offsetof(struct bcm_msg_head, ival1);
+	     i++) {
+		n = ((char*) msg)[i];
+		if (n != 0 && r == 0) {
+			fprintf(stderr, "Non-zero padding byte in the reply!\n");
+			r = 1;
 		}
 	}
-	return 0;
-}
 
-static int txsetup(struct message *msg, int sock, struct sockaddr_can *sa)
-{
-	memset(msg, 0, sizeof(*msg));
-
-	msg->b.opcode = TX_SETUP;
-	msg->b.flags = CAN_FD_FRAME | SETTIMER | STARTTIMER | TX_COUNTEVT;
-	msg->b.count = 2;
-	msg->b.ival1.tv_sec = msg->b.ival2.tv_sec = 1;
-	msg->b.ival1.tv_usec = msg->b.ival2.tv_usec = 1;
-	msg->b.can_id = 0;
-	msg->b.nframes = 1;
-
-	return receive_and_check(msg, sock, sa);
-}
-
-static int rxsetup(struct message *msg, int sock, struct sockaddr_can *sa)
-{
-	memset(msg, 0, sizeof(*msg));
-
-	msg->b.opcode = RX_SETUP;
-	msg->b.flags = CAN_FD_FRAME | SETTIMER | STARTTIMER;
-	msg->b.count = 0;
-	msg->b.ival1.tv_sec = msg->b.ival2.tv_sec = 0;
-	msg->b.ival1.tv_usec = msg->b.ival2.tv_usec = 1;
-	msg->b.can_id = 0;
-	msg->b.nframes = 1;
-
-	return receive_and_check(msg, sock, sa);
-}
-
-static int rxchanged(struct message *msg, int sock, struct sockaddr_can *sa)
-{
-	memset(msg, 0, sizeof(*msg));
-
-	msg->b.opcode = TX_SEND;
-	msg->b.flags = CAN_FD_FRAME;
-	msg->b.count = 0;
-	msg->b.ival1.tv_sec = msg->b.ival2.tv_sec = 0;
-	msg->b.ival1.tv_usec = msg->b.ival2.tv_usec = 1;
-	msg->b.can_id = 0;
-	msg->b.nframes = 1;
-
-	return receive_and_check(msg, sock, sa);
+	return r;
 }
 
 int main(int argc, char *argv[])
 {
-	struct sockaddr_can sa;
+	int sock, r;
 	struct message msg;
-
-	int sock = socket(AF_CAN, SOCK_DGRAM, CAN_BCM);
-
-	if (sock < 0) {
-		perror("Socket failure");
-		printf("Errno = %d\n", errno);
-		exit(EXIT_FAILURE);
-	}
+	unsigned ifindex;
 
 	if (argc != 2) {
-		printf("Please provide one argument\n");
+		fprintf(stderr, "Usage: %s <CAN-interface-name>\n"
+		                "Hint - a virtual CAN device will suffice. It can be set up with:\n"
+		                "  ip link add name testcan type vcan && ip link set testcan up\n", argv[0]);
 		exit(EXIT_FAILURE);
 	}
 
-	char *ifname= argv[1];
-
-	unsigned int getindex = if_nametoindex(ifname);
-
-	if (getindex == 0) {
-		perror("Interface is not valid");
-		printf("Errno = %d\n", errno);
+	ifindex = if_nametoindex(argv[1]);
+	if (!ifindex) {
+		perror("if_nametoindex");
 		exit(EXIT_FAILURE);
 	}
 
-	memset(&sa, 0, sizeof(sa));
-	sa.can_family = AF_CAN;
-	sa.can_ifindex = getindex;
-	sa.can_addr.tp.rx_id = 0;
-	sa.can_addr.tp.tx_id = 0;
+	const struct sockaddr_can sa = {
+		.can_family = AF_CAN,
+		.can_ifindex = ifindex,
+	};
 
-	int con = connect(sock, (struct sockaddr *)&sa, sizeof(sa));
-
-	if (con < 0) {
-		perror("Connection failure");
-		printf("Errno = %d\n", errno);
+	sock = socket(AF_CAN, SOCK_DGRAM, CAN_BCM);
+	if (sock < 0) {
+		perror("socket");
 		exit(EXIT_FAILURE);
 	}
 
-	int r1 = txsetup(&msg, sock, &sa);
+	r = connect(sock, (const struct sockaddr *)&sa, sizeof(sa));
+	if (r < 0) {
+		perror("connect");
+		exit(EXIT_FAILURE);
+	}
 
-	int r2 = rxsetup(&msg, sock, &sa);
+	msg = (struct message) {
+		.b.opcode = TX_SETUP,
+		.b.flags = CAN_FD_FRAME | SETTIMER | STARTTIMER | TX_COUNTEVT,
+		.b.count = 2,
+		.b.ival1 = { 0, 1 },
+		.b.nframes = 1,
+	};
+	r = communicate_and_check(&msg, sock, &sa, TX_EXPIRED);
 
-	int r3 = rxchanged(&msg, sock, &sa);
+	msg = (struct message) {
+		.b.opcode = RX_SETUP,
+		.b.flags = CAN_FD_FRAME | SETTIMER | STARTTIMER,
+		.b.ival1 = { 0, 1 },
+		.b.nframes = 1,
+	};
+	r |= communicate_and_check(&msg, sock, &sa, RX_TIMEOUT);
 
-	if (r1==0 && r2==0 && r3==0)
-   		return 0;
+	msg = (struct message) {
+		.b.opcode = TX_SEND,
+		.b.flags = CAN_FD_FRAME,
+		.b.nframes = 1,
+		.f.len = 1,
+		.f.data = { 0x42, },
+	};
+	r |= communicate_and_check(&msg, sock, &sa, RX_CHANGED);
 
-	return 1;
-
+	return r;
 }
