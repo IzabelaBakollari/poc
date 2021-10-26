@@ -49,19 +49,19 @@ static int receive_and_check(struct message *msg, int sock, struct sockaddr_can 
 
 	print_message(msg, s);
 
-	int b =0;
+	int r = 0;
 	for (int i = 12; i < 16; i++) {
 		char n = ((unsigned char*) msg)[i];
 		if (n != 0) {
 			printf("Padding bytes with index number %x are corrupted\n", i);
-			printf("%x ", n);
-			b = 1;
+			printf("%x\n ", n);
+			r = 1;
 		}
 	}
-	return b;
+	return r;
 }
 
-static int txsetup(struct message *msg, int sock, struct sockaddr_can *sa)
+static void txsetup(struct message *msg, int sock, int r, struct sockaddr_can *sa)
 {
 	memset(msg, 0, sizeof(*msg));
 
@@ -73,10 +73,10 @@ static int txsetup(struct message *msg, int sock, struct sockaddr_can *sa)
 	msg->b.can_id = 0;
 	msg->b.nframes = 1;
 
-	return receive_and_check(msg, sock, sa);
+	r = receive_and_check(msg, sock, sa);
 }
 
-static int rxsetup(struct message *msg, int sock, struct sockaddr_can *sa)
+static void rxsetup(struct message *msg, int sock, int r, struct sockaddr_can *sa)
 {
 	memset(msg, 0, sizeof(*msg));
 
@@ -88,10 +88,12 @@ static int rxsetup(struct message *msg, int sock, struct sockaddr_can *sa)
 	msg->b.can_id = 0;
 	msg->b.nframes = 1;
 
-	return receive_and_check(msg, sock, sa);
+	r |= receive_and_check(msg, sock, sa);
+
+	printf("%x\n", r);
 }
 
-static int rxchanged(struct message *msg, int sock, struct sockaddr_can *sa)
+static int rxchanged(struct message *msg, int sock, int r, struct sockaddr_can *sa)
 {
 	memset(msg, 0, sizeof(*msg));
 
@@ -103,13 +105,18 @@ static int rxchanged(struct message *msg, int sock, struct sockaddr_can *sa)
 	msg->b.can_id = 0;
 	msg->b.nframes = 1;
 
-	return receive_and_check(msg, sock, sa);
+	r |= receive_and_check(msg, sock, sa);
+		
+	printf("%x\n", r);
+
+	return r;
 }
 
 int main(int argc, char *argv[])
 {
 	struct sockaddr_can sa;
 	struct message msg;
+	int r=0;;
 
 	int sock = socket(AF_CAN, SOCK_DGRAM, CAN_BCM);
 
@@ -148,9 +155,12 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
-	int r = txsetup(&msg, sock, &sa);
-	r |= rxsetup(&msg, sock, &sa);
-	r |= rxchanged(&msg, sock, &sa);
+	txsetup(&msg, sock, r, &sa);
+	rxsetup(&msg, sock, r, &sa);
+	r = rxchanged(&msg, sock, r, &sa);
+
+	printf("%x\n", r);
+
 
 	return r;
 }
